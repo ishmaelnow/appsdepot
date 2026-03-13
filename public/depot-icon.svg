@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="8" fill="#1C1917"/>
+  <rect y="0" width="32" height="3" rx="1" fill="#F97316"/>
+  <!-- Warehouse roof -->
+  <path d="M6 14 L16 7 L26 14 L26 26 L6 26 Z" fill="#F97316"/>
+  <!-- Door -->
+  <rect x="12" y="18" width="8" height="8" rx="1" fill="#1C1917"/>
+</svg>
