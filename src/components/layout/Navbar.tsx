@@ -80,6 +80,9 @@ export function Navbar() {
             <Link to="/how-it-works" className="px-3 py-2 rounded-lg text-sm text-stone-300 hover:text-white hover:bg-white/10 transition-colors font-medium">
               How It Works
             </Link>
+            <Link to="/wish" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-depot-yellow hover:bg-depot-yellow/10 transition-colors">
+              ✨ Wish an App
+            </Link>
           </nav>
 
           {/* Right actions */}
@@ -155,6 +158,8 @@ export function Navbar() {
       {mobileOpen && (
         <div className="md:hidden bg-stone-900 border-t border-stone-700 px-4 py-4 space-y-1">
           <Link to="/store" onClick={() => setMobileOpen(false)} className="block px-3 py-2.5 rounded-lg text-sm font-medium text-stone-200 hover:bg-white/10">All Apps</Link>
+          <Link to="/how-it-works" onClick={() => setMobileOpen(false)} className="block px-3 py-2.5 rounded-lg text-sm font-medium text-stone-200 hover:bg-white/10">How It Works</Link>
+          <Link to="/wish" onClick={() => setMobileOpen(false)} className="block px-3 py-2.5 rounded-lg text-sm font-semibold text-depot-yellow hover:bg-depot-yellow/10">✨ Wish an App</Link>
           <Link to="/cart" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-stone-200 hover:bg-white/10">
             <Plus size={14} /> Build Tray {count > 0 && `(${count})`}
           </Link>

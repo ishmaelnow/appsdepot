@@ -10,6 +10,7 @@ import { CartPage } from './pages/CartPage'
 import { CheckoutPage } from './pages/CheckoutPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { HowItWorksPage } from './pages/HowItWorksPage'
+import { WishPage } from './pages/WishPage'
 import { AuthPage } from './pages/AuthPage'
 
 function WithLayout({ children }: { children: React.ReactNode }) {
@@ -31,6 +32,7 @@ export default function App() {
             <Route path="/checkout" element={<WithLayout><CheckoutPage /></WithLayout>} />
             <Route path="/dashboard" element={<WithLayout><DashboardPage /></WithLayout>} />
             <Route path="/how-it-works" element={<WithLayout><HowItWorksPage /></WithLayout>} />
+            <Route path="/wish" element={<WithLayout><WishPage /></WithLayout>} />
           </Routes>
         </CartProvider>
       </AuthProvider>
