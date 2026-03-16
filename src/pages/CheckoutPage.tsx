@@ -28,6 +28,7 @@ export function CheckoutPage() {
   const { user } = useAuth()
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   const [form, setForm] = useState({
     name: user?.fullName ?? '',
@@ -101,11 +102,35 @@ export function CheckoutPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setSubmitError('')
     setLoading(true)
-    await new Promise(r => setTimeout(r, 1500))
-    setLoading(false)
-    setSubmitted(true)
-    clearTray()
+    try {
+      const res = await fetch('/.netlify/functions/send-build-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          company: form.company,
+          requirements: form.requirements,
+          budgetRange: form.budgetRange,
+          timeline: form.timeline,
+          preferredStack: form.preferredStack,
+          apps: requests.map(r => ({
+            name: r.app.name,
+            startingPrice: formatStartingPrice(r.app),
+            buildTime: r.app.buildTime,
+          })),
+        }),
+      })
+      if (!res.ok) throw new Error('Server error')
+      clearTray()
+      setSubmitted(true)
+    } catch {
+      setSubmitError('Something went wrong sending your request. Please email us directly at hello@appsdepot.com')
+    } finally {
+      setLoading(false)
+    }
   }
 
   function set(field: string, value: string) {
@@ -226,6 +251,11 @@ export function CheckoutPage() {
               </div>
             </div>
 
+            {submitError && (
+              <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                {submitError}
+              </div>
+            )}
             <Button
               type="submit"
               size="xl"
