@@ -1,5 +1,5 @@
 import { Eye, Plus, Check, Clock, Layers } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import type { App } from '../../types'
 import { useCart } from '../../contexts/CartContext'
 import { StarRating } from '../ui/StarRating'
@@ -12,14 +12,27 @@ interface AppCardProps {
 }
 
 export function AppCard({ app, compact = false }: AppCardProps) {
-  const { addRequest, removeRequest, hasRequest } = useCart()
+  const { addRequest, hasRequest } = useCart()
+  const navigate = useNavigate()
   const inTray = hasRequest(app.id)
   const complexity = COMPLEXITY_LABELS[app.complexity]
 
   function handleTrayClick(e: React.MouseEvent) {
     e.preventDefault()
     e.stopPropagation()
-    inTray ? removeRequest(app.id) : addRequest(app)
+    if (inTray) {
+      navigate('/cart')
+      return
+    }
+
+    addRequest(app)
+    navigate('/cart')
+  }
+
+  function handleDemoClick(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    navigate(app.sampleUrl)
   }
 
   return (
@@ -54,6 +67,11 @@ export function AppCard({ app, compact = false }: AppCardProps) {
           <p className={`text-stone-600 text-sm leading-snug ${compact ? 'line-clamp-1' : 'line-clamp-2'}`}>
             {app.tagline}
           </p>
+          {!compact && (
+            <p className="text-xs text-stone-400 mt-2 line-clamp-1">
+              For {app.targetCustomer}
+            </p>
+          )}
         </div>
 
         {/* Metadata */}
@@ -84,22 +102,21 @@ export function AppCard({ app, compact = false }: AppCardProps) {
           </div>
 
           <div className="flex items-center gap-1.5">
-            <Link
-              to={`/app/${app.slug}`}
-              onClick={e => e.stopPropagation()}
+            <button
+              onClick={handleDemoClick}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-stone-200 text-stone-500 hover:border-stone-300 hover:bg-stone-50 transition-all"
             >
               <Eye size={11} /> Demo
-            </Link>
+            </button>
             <button
               onClick={handleTrayClick}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${
                 inTray
-                  ? 'bg-emerald-100 text-emerald-700 hover:bg-red-50 hover:text-red-600'
+                  ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
                   : 'bg-depot-orange text-white hover:bg-depot-orange-dark'
               }`}
             >
-              {inTray ? <><Check size={11} /> Added</> : <><Plus size={11} /> Request</>}
+              {inTray ? <><Check size={11} /> View Tray</> : <><Plus size={11} /> Add to Tray</>}
             </button>
           </div>
         </div>

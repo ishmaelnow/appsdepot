@@ -43,6 +43,7 @@ export interface App {
   slug: string
   tagline: string
   description: string
+  targetCustomer: string
   logoUrl?: string
   screenshots?: string[]
   /** Starting price for a custom build — null = "Get a Quote" */

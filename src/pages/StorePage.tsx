@@ -23,12 +23,22 @@ export function StorePage() {
 
   const filtered = useMemo(() => {
     let apps = [...APPS]
+    const filter = searchParams.get('filter')
+
+    if (filter === 'featured') {
+      apps = apps.filter(a => a.featured)
+    }
+
+    if (filter === 'new') {
+      apps = apps.filter(a => a.newArrival)
+    }
 
     if (filters.search) {
       const q = filters.search.toLowerCase()
       apps = apps.filter(a =>
         a.name.toLowerCase().includes(q) ||
         a.tagline.toLowerCase().includes(q) ||
+        a.targetCustomer.toLowerCase().includes(q) ||
         a.tags.some(t => t.includes(q)) ||
         a.vendor.name.toLowerCase().includes(q) ||
         a.techStack.some(t => t.toLowerCase().includes(q))
@@ -61,7 +71,7 @@ export function StorePage() {
     }
 
     return apps
-  }, [filters])
+  }, [filters, searchParams])
 
   const activeCategory = CATEGORIES.find(c => c.id === filters.categoryId)
 
@@ -75,10 +85,10 @@ export function StorePage() {
               <span>{activeCategory.name}</span>
               <span className="text-stone-400 font-normal text-2xl">— Aisle {activeCategory.aisle}</span>
             </span>
-          ) : 'All App Templates'}
+          ) : searchParams.get('filter') === 'new' ? 'Recently Added Apps' : searchParams.get('filter') === 'featured' ? 'Featured App Templates' : 'All App Templates'}
         </h1>
         <p className="text-stone-500 mt-1">
-          {activeCategory?.description ?? 'Browse sample apps — try the demo, then request your custom build'}
+          {activeCategory?.description ?? 'Browse app templates, preview the workflow, and request a custom build or quote.'}
         </p>
       </div>
 

@@ -81,14 +81,12 @@ export function CartPage() {
                 </div>
 
                 <div className="flex items-center gap-2 mt-3 pt-3 border-t border-stone-100">
-                  <a
-                    href={app.sampleUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <Link
+                    to={app.sampleUrl}
                     className="flex items-center gap-1 text-sm text-stone-500 hover:text-depot-black transition-colors"
                   >
                     <Eye size={13} /> Try Sample
-                  </a>
+                  </Link>
                   <Link to={`/app/${app.slug}`} className="flex items-center gap-1 text-sm text-stone-500 hover:text-depot-black transition-colors">
                     View Details
                   </Link>

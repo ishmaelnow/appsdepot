@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Sparkles, CheckCircle, Plus, Trash2, ArrowRight,
@@ -6,34 +6,16 @@ import {
 } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { CATEGORIES } from '../data/mockData'
+import { supabase } from '../lib/supabase'
 
-// ─── Mock recent community wishes ─────────────────────────────────────────────
-const RECENT_WISHES = [
-  {
-    id: 'w-1', title: 'AI-powered meeting notes & action tracker',
-    category: 'Productivity', submitter: 'David K.',
-    description: 'Records meetings, auto-generates summaries, and assigns action items to team members.',
-    votes: 47, status: 'under_review',
-  },
-  {
-    id: 'w-2', title: 'Multi-location inventory management system',
-    category: 'E-Commerce', submitter: 'Priya S.',
-    description: 'Track stock levels across warehouses, auto-reorder triggers, supplier PO management.',
-    votes: 34, status: 'in_progress',
-  },
-  {
-    id: 'w-3', title: 'Freelancer contract & time-tracking portal',
-    category: 'Finance & Billing', submitter: 'Marcus T.',
-    description: 'Digital contracts with e-signatures, time logging per project, and automatic invoice generation.',
-    votes: 29, status: 'under_review',
-  },
-  {
-    id: 'w-4', title: 'White-label client reporting dashboard',
-    category: 'Analytics & Data', submitter: 'Sarah M.',
-    description: 'Agencies send clients a branded dashboard showing campaign metrics, spend, and results.',
-    votes: 22, status: 'new',
-  },
-]
+interface RecentWish {
+  id: string
+  title: string
+  category_name: string | null
+  name: string
+  description: string
+  status: keyof typeof STATUS_CONFIG
+}
 
 const STATUS_CONFIG = {
   new:          { label: 'New Wish',      color: 'bg-stone-100 text-stone-600' },
@@ -56,8 +38,11 @@ export function WishPage() {
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [wishNumber, setWishNumber] = useState('')
   const [features, setFeatures] = useState(['', '', ''])
   const [votedIds, setVotedIds] = useState<Set<string>>(new Set())
+  const [recentWishes, setRecentWishes] = useState<RecentWish[]>([])
+  const [wishesLoading, setWishesLoading] = useState(false)
 
   const [form, setForm] = useState({
     title: '',
@@ -71,6 +56,32 @@ export function WishPage() {
     email: '',
     company: '',
   })
+
+  useEffect(() => {
+    if (!supabase) return
+
+    let cancelled = false
+
+    async function loadWishes() {
+      setWishesLoading(true)
+      const { data } = await supabase!
+        .from('app_wishes')
+        .select('id, title, category_name, name, description, status')
+        .order('created_at', { ascending: false })
+        .limit(6)
+
+      if (!cancelled) {
+        setRecentWishes((data ?? []) as RecentWish[])
+        setWishesLoading(false)
+      }
+    }
+
+    loadWishes()
+
+    return () => {
+      cancelled = true
+    }
+  }, [submitted])
 
   function set(field: string, value: string) {
     setForm(f => ({ ...f, [field]: value }))
@@ -102,9 +113,13 @@ export function WishPage() {
     setLoading(true)
     try {
       const categoryName = CATEGORIES.find(c => c.id === form.categoryId)?.name
+      const session = supabase ? (await supabase.auth.getSession()).data.session : null
       const res = await fetch('/.netlify/functions/send-wish', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           title: form.title,
           categoryName,
@@ -119,10 +134,12 @@ export function WishPage() {
           company: form.company,
         }),
       })
-      if (!res.ok) throw new Error('Server error')
+      const payload = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(payload.error || 'Server error')
+      setWishNumber(payload.wishNumber ?? '')
       setSubmitted(true)
-    } catch {
-      setSubmitError('Something went wrong. Please email us directly at hello@appsdepot.com')
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Something went wrong. Please email us directly at coachishmael@gmail.com or call (469) 835-7520')
     } finally {
       setLoading(false)
     }
@@ -142,6 +159,12 @@ export function WishPage() {
         <p className="text-stone-400 text-sm mb-8">
           Our team reviews every wish. We'll reach out to <strong>{form.email}</strong> if we decide to build it — or if we need more details.
         </p>
+        {wishNumber && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 mb-6">
+            <p className="text-xs text-yellow-700 font-semibold uppercase tracking-wide">Wish Number</p>
+            <p className="text-lg font-black text-depot-black">{wishNumber}</p>
+          </div>
+        )}
 
         <div className="bg-stone-50 rounded-2xl p-5 mb-8 text-left space-y-3">
           <h3 className="font-bold text-depot-black text-sm">Your wish:</h3>
@@ -395,11 +418,24 @@ export function WishPage() {
         <div className="lg:col-span-2 space-y-5">
           <div>
             <h3 className="text-lg font-black text-depot-black mb-1">Recent Community Wishes</h3>
-            <p className="text-stone-400 text-sm">Upvote ideas you'd also want built.</p>
+            <p className="text-stone-400 text-sm">Ideas submitted through the live backend.</p>
           </div>
 
-          {RECENT_WISHES.map(wish => {
-            const statusCfg = STATUS_CONFIG[wish.status as keyof typeof STATUS_CONFIG]
+          {wishesLoading && (
+            <div className="bg-white border border-stone-200 rounded-xl p-4 text-sm text-stone-500">
+              Loading recent wishes...
+            </div>
+          )}
+
+          {!wishesLoading && recentWishes.length === 0 && (
+            <div className="bg-white border border-stone-200 rounded-xl p-4">
+              <p className="font-bold text-depot-black text-sm">No wishes submitted yet</p>
+              <p className="text-xs text-stone-500 mt-1">The first submitted app wish will appear here after it is saved to Supabase.</p>
+            </div>
+          )}
+
+          {recentWishes.map(wish => {
+            const statusCfg = STATUS_CONFIG[wish.status] ?? STATUS_CONFIG.new
             const voted = votedIds.has(wish.id)
             return (
               <div key={wish.id} className="bg-white border border-stone-200 rounded-xl p-4">
@@ -412,8 +448,8 @@ export function WishPage() {
                 <p className="text-xs text-stone-500 leading-relaxed mb-3">{wish.description}</p>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs text-stone-400">
-                    <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">{wish.category}</span>
-                    <span>by {wish.submitter}</span>
+                    <span className="bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full">{wish.category_name ?? 'Uncategorized'}</span>
+                    <span>by {wish.name}</span>
                   </div>
                   <button
                     onClick={() => toggleVote(wish.id)}
@@ -423,7 +459,7 @@ export function WishPage() {
                         : 'border-stone-200 text-stone-500 hover:border-depot-orange hover:text-depot-orange'
                     }`}
                   >
-                    ▲ {wish.votes + (voted ? 1 : 0)}
+                    ▲ {voted ? 1 : 0}
                   </button>
                 </div>
               </div>

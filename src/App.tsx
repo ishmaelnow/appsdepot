@@ -12,6 +12,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { HowItWorksPage } from './pages/HowItWorksPage'
 import { WishPage } from './pages/WishPage'
 import { AuthPage } from './pages/AuthPage'
+import { DemoPage } from './pages/DemoPage'
 
 function WithLayout({ children }: { children: React.ReactNode }) {
   return <Layout>{children}</Layout>
@@ -28,6 +29,7 @@ export default function App() {
             <Route path="/store" element={<WithLayout><StorePage /></WithLayout>} />
             <Route path="/category/:slug" element={<WithLayout><CategoryPage /></WithLayout>} />
             <Route path="/app/:slug" element={<WithLayout><AppDetailPage /></WithLayout>} />
+            <Route path="/demo/:slug" element={<WithLayout><DemoPage /></WithLayout>} />
             <Route path="/cart" element={<WithLayout><CartPage /></WithLayout>} />
             <Route path="/checkout" element={<WithLayout><CheckoutPage /></WithLayout>} />
             <Route path="/dashboard" element={<WithLayout><DashboardPage /></WithLayout>} />

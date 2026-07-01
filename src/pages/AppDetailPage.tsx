@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom'
 import {
   Plus, Check, Eye, Clock, Users, Star,
-  ChevronDown, ChevronUp, Code2, Rocket, Shield
+  ChevronDown, ChevronUp, Code2, Rocket, Shield, Briefcase
 } from 'lucide-react'
 import { useState } from 'react'
 import { APPS, REVIEWS } from '../data/mockData'
@@ -109,14 +109,12 @@ export function AppDetailPage() {
               </div>
               <p className="font-bold text-depot-black mb-1">Interactive Sample Demo</p>
               <p className="text-stone-400 text-sm mb-4">See exactly what you'll get before requesting a build</p>
-              <a
-                href={app.sampleUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                to={app.sampleUrl}
                 className="inline-flex items-center gap-2 bg-depot-black text-white px-6 py-2.5 rounded-xl font-semibold text-sm hover:bg-stone-800 transition-colors"
               >
                 <Eye size={15} /> Open Sample App
-              </a>
+              </Link>
             </div>
           </div>
 
@@ -124,6 +122,13 @@ export function AppDetailPage() {
           <div>
             <h2 className="text-xl font-bold text-depot-black mb-3">About This App</h2>
             <p className="text-stone-600 text-sm leading-relaxed whitespace-pre-line">{app.description}</p>
+          </div>
+
+          <div className="bg-white border border-stone-200 rounded-xl p-5">
+            <h2 className="text-xl font-bold text-depot-black mb-2 flex items-center gap-2">
+              <Briefcase size={18} className="text-depot-orange" /> Target Customer
+            </h2>
+            <p className="text-stone-600 text-sm leading-relaxed">{app.targetCustomer}</p>
           </div>
 
           {/* What's included */}
@@ -262,18 +267,16 @@ export function AppDetailPage() {
                 {inTray ? (
                   <><Check size={18} /> Added — Click to Remove</>
                 ) : (
-                  <><Plus size={18} /> Add to Build Tray</>
+                  <><Plus size={18} /> Request Customization</>
                 )}
               </button>
 
-              <a
-                href={app.sampleUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                to={app.sampleUrl}
                 className="flex items-center justify-center gap-2 w-full py-3 border-2 border-stone-200 rounded-xl text-stone-600 hover:border-stone-300 font-semibold text-sm transition-colors"
               >
                 <Eye size={16} /> Try Sample App
-              </a>
+              </Link>
             </div>
 
             {/* Build details */}
@@ -297,7 +300,7 @@ export function AppDetailPage() {
               to="/cart"
               className="block text-center text-xs text-depot-orange hover:underline mt-4"
             >
-              View Build Tray & Submit Request →
+              View Build Tray & Submit Quote Request →
             </Link>
           </div>
 

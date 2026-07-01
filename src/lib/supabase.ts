@@ -1,12 +1,22 @@
 import { createClient } from '@supabase/supabase-js'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const meta = import.meta as any
-const supabaseUrl: string = meta.env?.VITE_SUPABASE_URL ?? ''
-const supabaseAnonKey: string = meta.env?.VITE_SUPABASE_ANON_KEY ?? ''
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? ''
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
+const appUrl = import.meta.env.VITE_APP_URL ?? ''
 
 export const supabase = supabaseUrl && supabaseAnonKey
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        persistSession: true,
+      },
+    })
   : null
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
+
+export function getAuthRedirectUrl(path = '/auth') {
+  const baseUrl = appUrl || window.location.origin
+  return `${baseUrl.replace(/\/$/, '')}${path}`
+}

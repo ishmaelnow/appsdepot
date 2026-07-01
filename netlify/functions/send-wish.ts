@@ -1,8 +1,9 @@
 import type { Handler } from '@netlify/functions'
 import { Resend } from 'resend'
+import { createServerSupabase, getRequestUserId, isSupabaseServerConfigured } from './_supabase'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const TO     = process.env.RESEND_TO_EMAIL   ?? 'hello@appsdepot.com'
+const TO     = process.env.RESEND_TO_EMAIL   ?? 'coachishmael@gmail.com'
 const FROM   = process.env.RESEND_FROM_EMAIL ?? 'wishes@appsdepot.com'
 
 interface WishBody {
@@ -17,6 +18,19 @@ interface WishBody {
   name: string
   email: string
   company?: string
+}
+
+function isEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+}
+
+function escapeHtml(value: string | undefined) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
 }
 
 export const handler: Handler = async (event) => {
@@ -34,6 +48,45 @@ export const handler: Handler = async (event) => {
   const { title, categoryName, description, targetUsers, features, inspiration, budgetRange, timeline, name, email, company } = body
 
   const filledFeatures = features.filter(Boolean)
+
+  if (!title?.trim() || !description?.trim() || !name?.trim() || !isEmail(email)) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Missing required app wish fields' }) }
+  }
+
+  if (!isSupabaseServerConfigured) {
+    return { statusCode: 500, body: JSON.stringify({ error: 'Supabase is not configured for server requests' }) }
+  }
+
+  const authHeader = event.headers.authorization ?? event.headers.Authorization
+  const customerUserId = await getRequestUserId(authHeader)
+  const supabase = createServerSupabase(authHeader)
+  if (!supabase) {
+    return { statusCode: 500, body: JSON.stringify({ error: 'Supabase client could not be created' }) }
+  }
+
+  const { data: savedWish, error: wishError } = await supabase
+    .from('app_wishes')
+    .insert({
+      customer_user_id: customerUserId,
+      title: title.trim(),
+      category_name: categoryName || null,
+      description: description.trim(),
+      target_users: targetUsers?.trim() || null,
+      features: filledFeatures,
+      inspiration: inspiration?.trim() || null,
+      budget_range: budgetRange || null,
+      timeline: timeline || null,
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      company: company?.trim() || null,
+    })
+    .select('id, wish_number')
+    .single()
+
+  if (wishError || !savedWish) {
+    console.error('Supabase app wish insert error:', wishError)
+    return { statusCode: 500, body: JSON.stringify({ error: 'Failed to save app wish' }) }
+  }
 
   const html = `
 <!DOCTYPE html>
@@ -56,47 +109,47 @@ export const handler: Handler = async (event) => {
 
     <!-- Body -->
     <div style="padding:32px">
-      <h1 style="margin:0 0 4px;font-size:22px;font-weight:900;color:#1c1917">✨ New App Wish</h1>
+      <h1 style="margin:0 0 4px;font-size:22px;font-weight:900;color:#1c1917">✨ New App Wish ${escapeHtml(savedWish.wish_number)}</h1>
       <p style="margin:0 0 24px;color:#78716c;font-size:14px">Submitted ${new Date().toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })}</p>
 
       <!-- App title -->
       <div style="background:#fef9c3;border:1px solid #fde047;border-radius:12px;padding:16px 20px;margin-bottom:20px">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#854d0e;margin-bottom:6px">Wished App</div>
-        <div style="font-size:20px;font-weight:900;color:#1c1917">${title}</div>
-        ${categoryName ? `<div style="margin-top:6px;font-size:13px;color:#78716c">Category: ${categoryName}</div>` : ''}
+        <div style="font-size:20px;font-weight:900;color:#1c1917">${escapeHtml(title)}</div>
+        ${categoryName ? `<div style="margin-top:6px;font-size:13px;color:#78716c">Category: ${escapeHtml(categoryName)}</div>` : ''}
       </div>
 
       <!-- Client info -->
       <div style="background:#fafaf9;border:1px solid #e7e5e4;border-radius:12px;padding:16px 20px;margin-bottom:20px">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#a8a29e;margin-bottom:10px">Submitted by</div>
-        <div style="font-size:16px;font-weight:700;color:#1c1917">${name}${company ? ` — ${company}` : ''}</div>
-        <a href="mailto:${email}" style="color:#f97316;font-size:14px;text-decoration:none">${email}</a>
+        <div style="font-size:16px;font-weight:700;color:#1c1917">${escapeHtml(name)}${company ? ` — ${escapeHtml(company)}` : ''}</div>
+        <a href="mailto:${escapeHtml(email)}" style="color:#f97316;font-size:14px;text-decoration:none">${escapeHtml(email)}</a>
       </div>
 
       <!-- Description -->
       <div style="margin-bottom:20px">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#a8a29e;margin-bottom:8px">Description</div>
-        <div style="background:#fafaf9;border:1px solid #e7e5e4;border-radius:8px;padding:14px 16px;font-size:14px;color:#1c1917;line-height:1.6;white-space:pre-wrap">${description}</div>
+        <div style="background:#fafaf9;border:1px solid #e7e5e4;border-radius:8px;padding:14px 16px;font-size:14px;color:#1c1917;line-height:1.6;white-space:pre-wrap">${escapeHtml(description)}</div>
       </div>
 
       ${targetUsers ? `
       <div style="margin-bottom:20px">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#a8a29e;margin-bottom:8px">Target Users</div>
-        <div style="font-size:14px;color:#1c1917">${targetUsers}</div>
+        <div style="font-size:14px;color:#1c1917">${escapeHtml(targetUsers)}</div>
       </div>` : ''}
 
       ${filledFeatures.length > 0 ? `
       <div style="margin-bottom:20px">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#a8a29e;margin-bottom:8px">Key Features</div>
         <ul style="margin:0;padding-left:20px;">
-          ${filledFeatures.map(f => `<li style="font-size:14px;color:#1c1917;margin-bottom:4px">${f}</li>`).join('')}
+          ${filledFeatures.map(f => `<li style="font-size:14px;color:#1c1917;margin-bottom:4px">${escapeHtml(f)}</li>`).join('')}
         </ul>
       </div>` : ''}
 
       ${inspiration ? `
       <div style="margin-bottom:20px">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#a8a29e;margin-bottom:8px">Inspired by</div>
-        <div style="font-size:14px;color:#1c1917;font-style:italic">"${inspiration}"</div>
+        <div style="font-size:14px;color:#1c1917;font-style:italic">"${escapeHtml(inspiration)}"</div>
       </div>` : ''}
 
       <!-- Budget & Timeline -->
@@ -105,24 +158,24 @@ export const handler: Handler = async (event) => {
         ${budgetRange ? `
         <div style="flex:1;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:14px 16px">
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#92400e;margin-bottom:4px">Budget</div>
-          <div style="font-size:14px;font-weight:700;color:#1c1917">${budgetRange}</div>
+          <div style="font-size:14px;font-weight:700;color:#1c1917">${escapeHtml(budgetRange)}</div>
         </div>` : ''}
         ${timeline ? `
         <div style="flex:1;background:#e0f2fe;border:1px solid #bae6fd;border-radius:8px;padding:14px 16px">
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#075985;margin-bottom:4px">Timeline</div>
-          <div style="font-size:14px;font-weight:700;color:#1c1917">${timeline}</div>
+          <div style="font-size:14px;font-weight:700;color:#1c1917">${escapeHtml(timeline)}</div>
         </div>` : ''}
       </div>` : ''}
 
       <!-- Reply CTA -->
-      <a href="mailto:${email}?subject=Re: Your Apps Depot App Wish — ${encodeURIComponent(title)}"
+      <a href="mailto:${escapeHtml(email)}?subject=Re: Your Apps Depot App Wish — ${encodeURIComponent(title)}"
         style="display:inline-block;background:#eab308;color:#1c1917;font-weight:700;font-size:14px;padding:12px 24px;border-radius:10px;text-decoration:none">
-        Reply to ${name.split(' ')[0]}
+        Reply to ${escapeHtml(name.split(' ')[0])}
       </a>
     </div>
 
     <div style="border-top:1px solid #e7e5e4;padding:16px 32px;text-align:center;color:#a8a29e;font-size:12px">
-      Apps Depot · appsdepot.com · This email was triggered by an App Wish form submission.
+      Apps Depot · coachishmael@gmail.com · (469) 835-7520 · This email was triggered by an App Wish form submission.
     </div>
   </div>
 </body>
@@ -133,10 +186,10 @@ export const handler: Handler = async (event) => {
       from:    FROM,
       to:      TO,
       replyTo: email,
-      subject: `✨ App Wish: "${title}" from ${name}${company ? ` (${company})` : ''}`,
+      subject: `✨ ${savedWish.wish_number} — App Wish: "${title}" from ${name}${company ? ` (${company})` : ''}`,
       html,
     })
-    return { statusCode: 200, body: JSON.stringify({ success: true }) }
+    return { statusCode: 200, body: JSON.stringify({ success: true, wishNumber: savedWish.wish_number }) }
   } catch (err) {
     console.error('Resend error:', err)
     return { statusCode: 500, body: JSON.stringify({ error: 'Failed to send email' }) }

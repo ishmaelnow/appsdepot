@@ -5,6 +5,7 @@ import { useCart } from '../contexts/CartContext'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '../components/ui/Button'
 import { getInitials, formatStartingPrice } from '../lib/utils'
+import { supabase } from '../lib/supabase'
 
 const BUDGET_RANGES = [
   'Under $2,000',
@@ -23,16 +24,82 @@ const TIMELINES = [
   'Not sure yet',
 ]
 
+type CheckoutRequest = ReturnType<typeof useCart>['requests']
+
+async function saveBuildRequestToSupabase({
+  form,
+  requests,
+  userId,
+}: {
+  form: {
+    name: string
+    email: string
+    phone: string
+    company: string
+    requirements: string
+    budgetRange: string
+    timeline: string
+    preferredStack: string
+  }
+  requests: CheckoutRequest
+  userId?: string
+}) {
+  if (!supabase) {
+    throw new Error('Supabase is not configured. Restart the dev server after checking your environment variables.')
+  }
+
+  const { data: savedRequest, error: requestError } = await supabase
+    .from('build_requests')
+    .insert({
+      customer_user_id: userId ?? null,
+      customer_name: form.name.trim(),
+      customer_email: form.email.trim().toLowerCase(),
+      customer_phone: form.phone.trim() || null,
+      company: form.company.trim() || null,
+      requirements: form.requirements.trim(),
+      budget_range: form.budgetRange,
+      timeline: form.timeline,
+      preferred_stack: form.preferredStack.trim() || null,
+      source: 'website-direct',
+    })
+    .select('id, request_number')
+    .single()
+
+  if (requestError || !savedRequest) {
+    throw new Error(requestError?.message || 'Failed to save build request')
+  }
+
+  const { error: appsError } = await supabase
+    .from('build_request_apps')
+    .insert(requests.map(({ app }) => ({
+      build_request_id: savedRequest.id,
+      app_slug: app.slug,
+      app_name: app.name,
+      category: app.category.name,
+      starting_price: formatStartingPrice(app),
+      build_time: app.buildTime,
+    })))
+
+  if (appsError) {
+    throw new Error(appsError.message || 'Failed to save requested apps')
+  }
+
+  return savedRequest.request_number as string
+}
+
 export function CheckoutPage() {
   const { requests, clearTray } = useCart()
   const { user } = useAuth()
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [requestNumber, setRequestNumber] = useState('')
+  const [submittedApps, setSubmittedApps] = useState<typeof requests>([])
 
   const [form, setForm] = useState({
     name: user?.fullName ?? '',
     email: user?.email ?? '',
+    phone: '',
     company: '',
     requirements: '',
     budgetRange: '',
@@ -64,6 +131,35 @@ export function CheckoutPage() {
         <p className="text-stone-400 text-sm mb-8">
           Our team will review your requirements and send a detailed quote to <strong>{form.email}</strong> within 24 hours.
         </p>
+        {requestNumber && (
+          <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 mb-6">
+            <p className="text-xs text-orange-700 font-semibold uppercase tracking-wide">Request Number</p>
+            <p className="text-lg font-black text-depot-black">{requestNumber}</p>
+          </div>
+        )}
+
+        {submittedApps.length > 0 && (
+          <div className="bg-white border border-stone-200 rounded-2xl p-5 mb-6 text-left">
+            <h3 className="font-bold text-depot-black text-sm mb-3">Apps submitted</h3>
+            <div className="space-y-3">
+              {submittedApps.map(({ app }) => (
+                <div key={app.id} className="flex items-center gap-3">
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-xs flex-shrink-0"
+                    style={{ backgroundColor: app.category.color }}
+                  >
+                    {getInitials(app.name)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-depot-black truncate">{app.name}</p>
+                    <p className="text-xs text-stone-400">{app.category.name} · {app.buildTime}</p>
+                  </div>
+                  <span className="text-xs font-semibold text-stone-600 flex-shrink-0">{formatStartingPrice(app)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* What happens next */}
         <div className="bg-stone-50 rounded-2xl p-5 mb-8 text-left space-y-4">
@@ -105,29 +201,55 @@ export function CheckoutPage() {
     setSubmitError('')
     setLoading(true)
     try {
-      const res = await fetch('/.netlify/functions/send-build-request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: form.name,
-          email: form.email,
-          company: form.company,
-          requirements: form.requirements,
-          budgetRange: form.budgetRange,
-          timeline: form.timeline,
-          preferredStack: form.preferredStack,
-          apps: requests.map(r => ({
-            name: r.app.name,
-            startingPrice: formatStartingPrice(r.app),
-            buildTime: r.app.buildTime,
-          })),
-        }),
-      })
-      if (!res.ok) throw new Error('Server error')
+      const session = supabase ? (await supabase.auth.getSession()).data.session : null
+      let savedRequestNumber = ''
+
+      try {
+        const res = await fetch('/.netlify/functions/send-build-request', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
+          body: JSON.stringify({
+            name: form.name,
+            email: form.email,
+            phone: form.phone,
+            company: form.company,
+            requirements: form.requirements,
+            budgetRange: form.budgetRange,
+            timeline: form.timeline,
+            preferredStack: form.preferredStack,
+            apps: requests.map(r => ({
+              slug: r.app.slug,
+              name: r.app.name,
+              category: r.app.category.name,
+              startingPrice: formatStartingPrice(r.app),
+              buildTime: r.app.buildTime,
+            })),
+          }),
+        })
+        const payload = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          const details = payload.error || `Request failed with status ${res.status}`
+          throw new Error(details)
+        }
+        savedRequestNumber = payload.requestNumber ?? ''
+      } catch (functionError) {
+        console.warn('Netlify build request function failed; falling back to direct Supabase insert.', functionError)
+        savedRequestNumber = await saveBuildRequestToSupabase({
+          form,
+          requests,
+          userId: user?.id,
+        })
+      }
+
+      setRequestNumber(savedRequestNumber)
+      setSubmittedApps(requests)
       clearTray()
       setSubmitted(true)
-    } catch {
-      setSubmitError('Something went wrong sending your request. Please email us directly at hello@appsdepot.com')
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Something went wrong sending your request. Please email us directly at coachishmael@gmail.com or call (469) 835-7520')
     } finally {
       setLoading(false)
     }
@@ -173,14 +295,25 @@ export function CheckoutPage() {
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Company / Project Name</label>
-                <input
-                  type="text" value={form.company}
-                  onChange={e => set('company', e.target.value)}
-                  className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-depot-orange"
-                  placeholder="Acme Inc."
-                />
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 mb-1">Phone Number</label>
+                  <input
+                    type="tel" value={form.phone}
+                    onChange={e => set('phone', e.target.value)}
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-depot-orange"
+                    placeholder="(555) 123-4567"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 mb-1">Company / Project Name</label>
+                  <input
+                    type="text" value={form.company}
+                    onChange={e => set('company', e.target.value)}
+                    className="w-full border border-stone-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-depot-orange"
+                    placeholder="Acme Inc."
+                  />
+                </div>
               </div>
             </div>
 

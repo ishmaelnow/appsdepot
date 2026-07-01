@@ -10,6 +10,7 @@ export function HomePage() {
   const featured = APPS.filter(a => a.featured)
   const newArrivals = APPS.filter(a => a.newArrival)
   const topRated = [...APPS].sort((a, b) => b.rating - a.rating).slice(0, 4)
+  const popularBuild = APPS.find(a => a.slug === 'restaurant-ordering-app') ?? featured[0]
 
   return (
     <div>
@@ -87,14 +88,14 @@ export function HomePage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
         <div className="bg-gradient-to-r from-depot-black to-stone-800 rounded-2xl p-8 text-white flex flex-col sm:flex-row items-center justify-between gap-6">
           <div>
-            <div className="text-depot-orange font-bold text-sm mb-2">🛠️ Most Popular Build</div>
-            <h3 className="text-2xl font-black">SaaS LaunchPad — ship in days, not months</h3>
+            <div className="text-depot-orange font-bold text-sm mb-2">Most Popular Build</div>
+            <h3 className="text-2xl font-black">{popularBuild.name} - launch ordering without marketplace fees</h3>
             <p className="text-stone-400 text-sm mt-1">
-              Auth, billing, multi-tenancy — all pre-wired. {formatStartingPrice(APPS[11])} · {APPS[11].buildTime}
+              Menu, checkout, kitchen flow, and reporting customized to your business. {formatStartingPrice(popularBuild)} · {popularBuild.buildTime}
             </p>
           </div>
           <Link
-            to="/app/launchpad"
+            to={`/app/${popularBuild.slug}`}
             className="flex items-center gap-2 bg-depot-orange hover:bg-depot-orange-dark text-white px-6 py-3 rounded-xl font-bold text-sm transition-colors whitespace-nowrap flex-shrink-0"
           >
             Try the Sample <ArrowRight size={16} />

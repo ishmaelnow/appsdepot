@@ -35,7 +35,7 @@ export function Hero() {
           </h1>
 
           <p className="text-stone-300 text-lg sm:text-xl leading-relaxed mb-8 max-w-xl">
-            Browse our app catalog, try live demos, and request a custom-built version tailored to your exact requirements — deployed to your infrastructure.
+            Browse our app depot, preview business-ready templates, and request a custom-built version tailored to your exact workflow.
           </p>
 
           {/* How it works — inline */}
@@ -64,7 +64,7 @@ export function Hero() {
                 type="text"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                placeholder="Search apps (e.g. booking system, admin panel...)"
+                placeholder="Search apps (e.g. barber booking, delivery, restaurant...)"
                 className="w-full pl-11 pr-4 py-4 bg-white/10 border border-white/20 rounded-xl text-white placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-depot-orange focus:border-transparent text-base"
               />
             </div>
@@ -79,9 +79,9 @@ export function Hero() {
           {/* Stats */}
           <div className="flex items-center gap-8 mt-10 flex-wrap">
             {[
-              { label: '85+ Sample Apps' },
-              { label: '1,200+ Projects Delivered' },
-              { label: '2–12 Week Build Time' },
+              { label: 'Business App Templates' },
+              { label: 'Quote Before Payment' },
+              { label: '2-10 Week Build Time' },
             ].map(({ label }) => (
               <div key={label} className="flex items-center gap-2 text-stone-300 text-sm">
                 <span className="w-1.5 h-1.5 rounded-full bg-depot-orange" />

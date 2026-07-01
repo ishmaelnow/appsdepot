@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Warehouse, Mail, Lock, User, ArrowRight, AlertCircle } from 'lucide-react'
+import { Warehouse, Mail, Lock, User, ArrowRight, AlertCircle, CheckCircle } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '../components/ui/Button'
+import { supabase, isSupabaseConfigured } from '../lib/supabase'
 
 export function AuthPage() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
@@ -10,13 +11,90 @@ export function AuthPage() {
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(false)
-  const { signIn, signUp } = useAuth()
+  const [resendingConfirmation, setResendingConfirmation] = useState(false)
+  const [canResendConfirmation, setCanResendConfirmation] = useState(false)
+  const [confirmingEmail, setConfirmingEmail] = useState(false)
+  const { signIn, signUp, resendConfirmation, user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [authLoading, navigate, user])
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return
+    const supabaseClient = supabase
+
+    const url = new URL(window.location.href)
+    const searchParams = url.searchParams
+    const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''))
+    const authError = searchParams.get('error_description') || hashParams.get('error_description')
+    const authErrorCode = searchParams.get('error_code') || hashParams.get('error_code')
+    const code = searchParams.get('code')
+    const hasSessionHash = hashParams.has('access_token') && hashParams.has('refresh_token')
+    const hasAuthCallback = Boolean(code || hasSessionHash || authError)
+
+    if (!hasAuthCallback) return
+
+    let cancelled = false
+
+    async function completeEmailConfirmation() {
+      setConfirmingEmail(true)
+      setError('')
+      setNotice('Confirming your email...')
+
+      if (authError) {
+        setError(authErrorCode === 'otp_expired'
+          ? 'That confirmation link is invalid or expired. Enter your email below and request a fresh confirmation email.'
+          : authError)
+        setNotice('')
+        setMode('signin')
+        setCanResendConfirmation(true)
+        setConfirmingEmail(false)
+        window.history.replaceState({}, document.title, '/auth')
+        return
+      }
+
+      const result = code
+        ? await supabaseClient.auth.exchangeCodeForSession(code)
+        : await supabaseClient.auth.getSession()
+
+      if (cancelled) return
+
+      if (result.error) {
+        setError(result.error.message)
+        setNotice('')
+        setConfirmingEmail(false)
+        return
+      }
+
+      window.history.replaceState({}, document.title, '/auth')
+      setMode('signin')
+      setConfirmingEmail(false)
+
+      if (result.data.session) {
+        navigate('/dashboard', { replace: true })
+      } else {
+        setNotice('Email confirmed. Sign in to open your client dashboard.')
+      }
+    }
+
+    completeEmailConfirmation()
+
+    return () => {
+      cancelled = true
+    }
+  }, [navigate])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    setNotice('')
+    setCanResendConfirmation(false)
     setLoading(true)
 
     const result = mode === 'signin'
@@ -26,9 +104,42 @@ export function AuthPage() {
     setLoading(false)
     if (result.error) {
       setError(result.error)
+    } else if (mode === 'signup' && result.accountAlreadyExists) {
+      setMode('signin')
+      setNotice(`An account already exists for ${email}. Sign in with your password to continue.`)
+    } else if (mode === 'signup' && result.needsEmailConfirmation) {
+      setNotice(`Account created for ${email}. Check that inbox and confirm your email before signing in.`)
     } else {
       navigate('/dashboard')
     }
+  }
+
+  async function handleResendConfirmation() {
+    if (!email) {
+      setError('Enter the email address you used to create the account.')
+      return
+    }
+
+    setError('')
+    setNotice('')
+    setResendingConfirmation(true)
+
+    const result = await resendConfirmation(email)
+
+    setResendingConfirmation(false)
+    if (result.error) {
+      setError(result.error)
+    } else {
+      setNotice(`Supabase accepted the confirmation request for ${email}. Check the newest email, including spam or promotions.`)
+      setCanResendConfirmation(false)
+    }
+  }
+
+  function switchMode(nextMode: 'signin' | 'signup') {
+    setMode(nextMode)
+    setError('')
+    setNotice('')
+    setCanResendConfirmation(false)
   }
 
   return (
@@ -49,8 +160,8 @@ export function AuthPage() {
           </h1>
           <p className="text-stone-500 text-sm mt-1">
             {mode === 'signin'
-              ? 'Sign in to access your apps and deployments'
-              : 'Join 50,000+ teams using Apps Depot'}
+              ? 'Sign in to access your client project dashboard'
+              : 'Create a client account for quotes, project updates, and delivered builds'}
           </p>
         </div>
 
@@ -61,7 +172,7 @@ export function AuthPage() {
             {(['signin', 'signup'] as const).map(m => (
               <button
                 key={m}
-                onClick={() => { setMode(m); setError('') }}
+                onClick={() => switchMode(m)}
                 className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
                   mode === m
                     ? 'bg-white text-depot-black shadow-sm'
@@ -122,16 +233,31 @@ export function AuthPage() {
               </div>
             )}
 
-            <Button type="submit" size="lg" loading={loading} className="w-full">
+            {notice && (
+              <div className="flex items-start gap-2 text-emerald-700 text-sm bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                <CheckCircle size={15} className="flex-shrink-0 mt-0.5" />
+                <span>{notice}</span>
+              </div>
+            )}
+
+            {canResendConfirmation && (
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                loading={resendingConfirmation}
+                onClick={handleResendConfirmation}
+                className="w-full"
+              >
+                Resend Confirmation Email
+              </Button>
+            )}
+
+            <Button type="submit" size="lg" loading={loading || confirmingEmail} disabled={confirmingEmail} className="w-full">
               {mode === 'signin' ? 'Sign In' : 'Create Account'}
               <ArrowRight size={16} />
             </Button>
           </form>
-
-          {/* Demo note */}
-          <div className="mt-4 p-3 bg-stone-50 rounded-lg border border-stone-200 text-xs text-stone-500">
-            <strong>Demo mode:</strong> Supabase not configured — any credentials will work.
-          </div>
 
           {mode === 'signin' && (
             <p className="text-center text-xs text-stone-400 mt-4">
@@ -142,7 +268,7 @@ export function AuthPage() {
 
         <p className="text-center text-xs text-stone-400 mt-4">
           {mode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
-          <button onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')} className="text-depot-orange hover:underline font-medium">
+          <button onClick={() => switchMode(mode === 'signin' ? 'signup' : 'signin')} className="text-depot-orange hover:underline font-medium">
             {mode === 'signin' ? 'Sign up free' : 'Sign in'}
           </button>
         </p>
