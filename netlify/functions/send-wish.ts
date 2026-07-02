@@ -3,8 +3,8 @@ import { Resend } from 'resend'
 import { createServerSupabase, getRequestUserId, isSupabaseServerConfigured } from './_supabase'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const TO     = process.env.RESEND_TO_EMAIL   ?? 'coachishmael@gmail.com'
-const FROM   = process.env.RESEND_FROM_EMAIL ?? 'wishes@appsdepot.com'
+const TO     = process.env.RESEND_TO_EMAIL   ?? 'ishmael@appsdepot.app'
+const FROM   = process.env.RESEND_FROM_EMAIL ?? 'ishmael@appsdepot.app'
 
 interface WishBody {
   title: string
@@ -175,7 +175,7 @@ export const handler: Handler = async (event) => {
     </div>
 
     <div style="border-top:1px solid #e7e5e4;padding:16px 32px;text-align:center;color:#a8a29e;font-size:12px">
-      Apps Depot · coachishmael@gmail.com · (469) 835-7520 · This email was triggered by an App Wish form submission.
+      Apps Depot · ishmael@appsdepot.app · (469) 835-7520 · This email was triggered by an App Wish form submission.
     </div>
   </div>
 </body>

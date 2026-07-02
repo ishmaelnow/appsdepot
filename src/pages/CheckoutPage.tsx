@@ -249,7 +249,7 @@ export function CheckoutPage() {
       clearTray()
       setSubmitted(true)
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Something went wrong sending your request. Please email us directly at coachishmael@gmail.com or call (469) 835-7520')
+      setSubmitError(err instanceof Error ? err.message : 'Something went wrong sending your request. Please email us directly at ishmael@appsdepot.app or call (469) 835-7520')
     } finally {
       setLoading(false)
     }

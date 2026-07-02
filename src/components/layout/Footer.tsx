@@ -57,7 +57,7 @@ export function Footer() {
             <ul className="space-y-2">
               <li><Link to="/store" className="text-sm hover:text-depot-orange transition-colors">Browse All Apps</Link></li>
               <li><Link to="/wish" className="text-sm hover:text-depot-yellow transition-colors flex items-center gap-1">✨ Wish an App</Link></li>
-              <li><a href="mailto:coachishmael@gmail.com" className="text-sm hover:text-depot-orange transition-colors">coachishmael@gmail.com</a></li>
+              <li><a href="mailto:ishmael@appsdepot.app" className="text-sm hover:text-depot-orange transition-colors">ishmael@appsdepot.app</a></li>
               <li><a href="tel:+14698357520" className="text-sm hover:text-depot-orange transition-colors">(469) 835-7520</a></li>
               <li><a href="#" className="text-sm hover:text-depot-orange transition-colors">Privacy Policy</a></li>
               <li><a href="#" className="text-sm hover:text-depot-orange transition-colors">Terms of Service</a></li>
