@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signIn(email: string, password: string) {
     if (!isSupabaseConfigured || !supabase) {
-      return { error: 'Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then restart the dev server.' }
+      return { error: 'Unable to connect to the server. Please try again later' }
     }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (!error && data.user) {
@@ -103,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signUp(email: string, password: string, fullName: string) {
     if (!isSupabaseConfigured || !supabase) {
-      return { error: 'Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then restart the dev server.' }
+      return { error: 'Unable to connect to the server. Please try again later' }
     }
     const { data, error } = await supabase.auth.signUp({
       email, password,
@@ -127,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function resendConfirmation(email: string) {
     if (!isSupabaseConfigured || !supabase) {
-      return { error: 'Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, then restart the dev server.' }
+      return { error: 'Unable to connect to the server. Please try again later' }
     }
 
     const { error } = await supabase.auth.resend({
