@@ -196,6 +196,60 @@ export const handler: Handler = async (event) => {
     <div style="border-top:1px solid #e7e5e4;padding:16px 32px;text-align:center;color:#a8a29e;font-size:12px">
       Apps Depot · ishmael@appsdepot.app · (469) 835-7520 · This email was triggered by a build request form submission.
     </div>
+	  </div>
+	</body>
+	</html>`
+
+  const customerAppRows = apps.map(a =>
+    `<tr>
+      <td style="padding:8px 12px;border-bottom:1px solid #e7e5e4;font-weight:600;color:#1c1917">${escapeHtml(a.name)}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #e7e5e4;color:#57534e">${escapeHtml(a.buildTime)}</td>
+    </tr>`
+  ).join('')
+
+  const customerHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f5f5f4;font-family:Inter,system-ui,sans-serif">
+  <div style="max-width:600px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e7e5e4">
+    <div style="background:#1c1917;padding:24px 32px">
+      <div style="color:#fff;font-weight:900;font-size:18px;line-height:1">APPS <span style="color:#f97316">DEPOT</span></div>
+      <div style="color:#a8a29e;font-size:12px;margin-top:4px">Build Request Received</div>
+    </div>
+    <div style="height:4px;background:#f97316"></div>
+    <div style="padding:32px">
+      <h1 style="margin:0 0 12px;font-size:22px;font-weight:900;color:#1c1917">We received your build request</h1>
+      <p style="margin:0 0 18px;color:#57534e;font-size:14px;line-height:1.6">Hi ${escapeHtml(name.split(' ')[0] || name)}, thanks for sending your Apps Depot build request. Our team will review the details and follow up with next steps.</p>
+
+      <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:16px 20px;margin-bottom:20px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#9a3412;margin-bottom:6px">Request Number</div>
+        <div style="font-size:20px;font-weight:900;color:#1c1917">${escapeHtml(savedRequest.request_number)}</div>
+      </div>
+
+      <div style="margin-bottom:20px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#a8a29e;margin-bottom:10px">Requested Apps</div>
+        <table style="width:100%;border-collapse:collapse;border:1px solid #e7e5e4;border-radius:8px;overflow:hidden">
+          <thead>
+            <tr style="background:#fafaf9">
+              <th style="padding:8px 12px;text-align:left;font-size:12px;color:#78716c;font-weight:600">App</th>
+              <th style="padding:8px 12px;text-align:left;font-size:12px;color:#78716c;font-weight:600">Build Time</th>
+            </tr>
+          </thead>
+          <tbody>${customerAppRows}</tbody>
+        </table>
+      </div>
+
+      <div style="background:#fafaf9;border:1px solid #e7e5e4;border-radius:12px;padding:16px 20px;margin-bottom:20px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#a8a29e;margin-bottom:8px">Your Requirements</div>
+        <div style="font-size:14px;color:#57534e;line-height:1.6;white-space:pre-wrap">${escapeHtml(requirements)}</div>
+      </div>
+
+      <p style="margin:0;color:#78716c;font-size:13px;line-height:1.6">You can reply to this email if you want to add context or clarify anything about the request.</p>
+    </div>
+    <div style="border-top:1px solid #e7e5e4;padding:16px 32px;text-align:center;color:#a8a29e;font-size:12px">
+      Apps Depot · ishmael@appsdepot.app · (469) 835-7520
+    </div>
   </div>
 </body>
 </html>`
@@ -208,6 +262,15 @@ export const handler: Handler = async (event) => {
       subject: `🏗️ ${savedRequest.request_number} — New Build Request from ${name}${company ? ` (${company})` : ''}`,
       html,
     })
+
+    await resend.emails.send({
+      from:    FROM,
+      to:      email,
+      replyTo: TO,
+      subject: `We received your Apps Depot build request ${savedRequest.request_number}`,
+      html:    customerHtml,
+    })
+
     return { statusCode: 200, body: JSON.stringify({ success: true, requestNumber: savedRequest.request_number }) }
   } catch (err) {
     console.error('Resend error:', err)

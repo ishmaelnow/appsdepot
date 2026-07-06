@@ -177,6 +177,41 @@ export const handler: Handler = async (event) => {
     <div style="border-top:1px solid #e7e5e4;padding:16px 32px;text-align:center;color:#a8a29e;font-size:12px">
       Apps Depot · ishmael@appsdepot.app · (469) 835-7520 · This email was triggered by an App Wish form submission.
     </div>
+	  </div>
+	</body>
+	</html>`
+
+  const customerHtml = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f5f5f4;font-family:Inter,system-ui,sans-serif">
+  <div style="max-width:600px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e7e5e4">
+    <div style="background:#1c1917;padding:24px 32px">
+      <div style="color:#fff;font-weight:900;font-size:18px;line-height:1">APPS <span style="color:#f97316">DEPOT</span></div>
+      <div style="color:#a8a29e;font-size:12px;margin-top:4px">App Wish Received</div>
+    </div>
+    <div style="height:4px;background:#eab308"></div>
+    <div style="padding:32px">
+      <h1 style="margin:0 0 12px;font-size:22px;font-weight:900;color:#1c1917">We received your app wish</h1>
+      <p style="margin:0 0 18px;color:#57534e;font-size:14px;line-height:1.6">Hi ${escapeHtml(name.split(' ')[0] || name)}, thanks for sharing your idea with Apps Depot. Our team will review it and reach out if we need more details.</p>
+
+      <div style="background:#fef9c3;border:1px solid #fde047;border-radius:12px;padding:16px 20px;margin-bottom:20px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#854d0e;margin-bottom:6px">Wish Number</div>
+        <div style="font-size:20px;font-weight:900;color:#1c1917">${escapeHtml(savedWish.wish_number)}</div>
+      </div>
+
+      <div style="background:#fafaf9;border:1px solid #e7e5e4;border-radius:12px;padding:16px 20px;margin-bottom:20px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#a8a29e;margin-bottom:8px">Your App Wish</div>
+        <div style="font-size:16px;font-weight:800;color:#1c1917;margin-bottom:8px">${escapeHtml(title)}</div>
+        <div style="font-size:14px;color:#57534e;line-height:1.6;white-space:pre-wrap">${escapeHtml(description)}</div>
+      </div>
+
+      <p style="margin:0;color:#78716c;font-size:13px;line-height:1.6">You can reply to this email if you want to add context or clarify anything about the idea.</p>
+    </div>
+    <div style="border-top:1px solid #e7e5e4;padding:16px 32px;text-align:center;color:#a8a29e;font-size:12px">
+      Apps Depot · ishmael@appsdepot.app · (469) 835-7520
+    </div>
   </div>
 </body>
 </html>`
@@ -189,6 +224,15 @@ export const handler: Handler = async (event) => {
       subject: `✨ ${savedWish.wish_number} — App Wish: "${title}" from ${name}${company ? ` (${company})` : ''}`,
       html,
     })
+
+    await resend.emails.send({
+      from:    FROM,
+      to:      email,
+      replyTo: TO,
+      subject: `We received your Apps Depot app wish ${savedWish.wish_number}`,
+      html:    customerHtml,
+    })
+
     return { statusCode: 200, body: JSON.stringify({ success: true, wishNumber: savedWish.wish_number }) }
   } catch (err) {
     console.error('Resend error:', err)
